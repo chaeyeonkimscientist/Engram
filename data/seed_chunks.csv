@@ -1,0 +1,8 @@
+chunk,enc_level,start_s,end_s
+intro,0.35,0.0,30.0
+history,0.55,30.0,60.0
+document_model,0.8,60.0,95.0
+bson_types,0.25,95.0,125.0
+indexing,0.7,125.0,160.0
+querying,0.6,160.0,190.0
+aggregation,0.85,190.0,230.0

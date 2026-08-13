@@ -20,3 +20,27 @@ RECALL_SHRINK_S = 0.4
 HALF_LIFE_MIN_H = 24.0
 HALF_LIFE_SHRINK = 0.6
 SELECT_K = 5
+COLD_START_N = 3
+WEAK_BELIEF = 0.5
+PROFILE_KMEANS_K = 5
+SEED_BACKDATE_DAYS = 5
+
+SEED_DOC_ID = "mongodb-part1"
+DEMO_DOC_ID = "mongodb-part2"
+
+EEG_FS = 256
+WINDOW_S = 2.0
+WINDOW_OVERLAP = 0.5
+THETA_LO_HZ = 4.0
+THETA_HI_HZ = 8.0
+ALPHA_LO_HZ = 8.0
+ALPHA_HI_HZ = 13.0
+EEG_CHANNELS = ("TP9", "AF7", "AF8", "TP10")
+BASELINE_CSV = "data/baseline.csv"
+SEED_SESSION_CSV = "data/seed_session.csv"
+DEMO_SESSION_CSV = "data/demo_session.csv"
+SEED_CHUNKS_CSV = "data/seed_chunks.csv"
+DEMO_CHUNKS_CSV = "data/demo_chunks.csv"
+GRADE_COS_LO = 0.15
+GRADE_COS_SPAN = 0.65
+EXCERPT_CHARS = 280

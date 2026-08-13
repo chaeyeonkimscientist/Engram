@@ -1,0 +1,8 @@
+chunk,enc_level,start_s,end_s
+security_intro,0.45,0.0,25.0
+authentication,0.75,25.0,55.0
+authorization,0.3,55.0,80.0
+locking,0.8,80.0,110.0
+replication,0.4,110.0,135.0
+jepsen_analysis,0.88,135.0,170.0
+consistency,0.2,170.0,195.0

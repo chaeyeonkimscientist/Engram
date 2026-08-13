@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Engram</title>
+  <style>
+    :root {
+      --bg: #11150f;
+      --ink: #f4f1e8;
+      --muted: #b7b09f;
+      --card: #1c2219;
+      --line: #2d3628;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", Palatino, serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header {
+      padding: 1.25rem 1.5rem 0.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; letter-spacing: 0.02em; }
+    .sub { color: var(--muted); font-size: 0.95rem; }
+    #greeting {
+      margin-top: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      background: #241c14;
+      border-left: 3px solid #e0a45a;
+      color: #f0d9b5;
+      font-size: 0.95rem;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1.4fr 0.9fr;
+      gap: 1rem;
+      padding: 1rem 1.5rem 2rem;
+    }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .passage {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-left-width: 6px;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.7rem;
+    }
+    .meta {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .pnum { font-variant-numeric: tabular-nums; color: var(--ink); }
+    aside {
+      background: var(--card);
+      border: 1px solid var(--line);
+      padding: 1rem;
+      position: sticky;
+      top: 0.75rem;
+      height: fit-content;
+    }
+    button {
+      font: inherit;
+      background: #d9e4a7;
+      color: #111;
+      border: 0;
+      padding: 0.55rem 0.9rem;
+      cursor: pointer;
+    }
+    button.secondary { background: #2c3828; color: var(--ink); }
+    textarea {
+      width: 100%;
+      min-height: 6rem;
+      margin: 0.6rem 0;
+      background: #0f130e;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      padding: 0.6rem;
+      font: inherit;
+    }
+    .delta {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 1.35rem;
+      margin: 0.6rem 0;
+    }
+    .q { margin: 0.6rem 0; }
+    .excerpt { color: var(--muted); font-size: 0.9rem; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Engram</h1>
+    <div class="sub">Your reading, remembered. Heatmap is P(encoded) per passage — red is the gap.</div>
+    <div id="greeting">Start a session to load the demo prior and last-session gaps.</div>
+  </header>
+  <div class="layout">
+    <main>
+      <div class="row">
+        <button type="button" id="start">Start session</button>
+        <button type="button" class="secondary" id="reload">Refresh heatmap</button>
+      </div>
+      <div id="passages"></div>
+    </main>
+    <aside>
+      <h2 style="margin-top:0;font-size:1.05rem;">Quiz the gap</h2>
+      <div id="quiz">Start a session, then ask for the lowest-belief passage.</div>
+      <button type="button" id="next">Quiz next</button>
+      <textarea id="answer" placeholder="Type a short answer…"></textarea>
+      <button type="button" id="submit">Submit answer</button>
+      <div class="delta" id="delta"></div>
+    </aside>
+  </div>
+  <script>
+    const DEMO = "mongodb-part2";
+    let current = null;
+
+    function colorFor(p) {
+      if (p == null) return "#3a3a3a";
+      const h = p * 115;
+      return `hsl(${h}, 55%, 32%)`;
+    }
+
+    function fmt(p) {
+      return p == null ? "—" : p.toFixed(2);
+    }
+
+    async function loadBeliefs() {
+      const res = await fetch(`/api/beliefs/${DEMO}`);
+      const data = await res.json();
+      const root = document.getElementById("passages");
+      root.innerHTML = "";
+      for (const c of data.chunks) {
+        const el = document.createElement("article");
+        el.className = "passage";
+        el.style.borderLeftColor = colorFor(c.p_encoded);
+        el.dataset.chunkId = c.chunk_id;
+        el.innerHTML = `
+          <div class="meta">
+            <span>ord ${c.ord} · ${c.n_chars} chars · reviews ${c.review_count}</span>
+            <span class="pnum">prior ${fmt(c.p_prior)} → now ${fmt(c.p_encoded)}</span>
+          </div>
+          <div>${c.text.replaceAll("\n", "<br/>")}</div>`;
+        root.appendChild(el);
+      }
+    }
+
+    document.getElementById("start").onclick = async () => {
+      const res = await fetch("/api/session/start", { method: "POST" });
+      const data = await res.json();
+      document.getElementById("greeting").textContent = data.greeting_text;
+      await loadBeliefs();
+    };
+
+    document.getElementById("reload").onclick = loadBeliefs;
+
+    document.getElementById("next").onclick = async () => {
+      const res = await fetch("/api/quiz/next", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_id: DEMO }),
+      });
+      const data = await res.json();
+      current = data;
+      document.getElementById("quiz").innerHTML = `
+        <div class="q"><strong>ord ${data.ord}</strong> · p=${data.p_encoded.toFixed(2)}</div>
+        <div class="q">${data.question_text}</div>
+        <div class="excerpt">${data.excerpt}</div>`;
+      document.getElementById("delta").textContent = "";
+      document.getElementById("answer").value = "";
+    };
+
+    document.getElementById("submit").onclick = async () => {
+      if (!current) return;
+      const text = document.getElementById("answer").value;
+      const res = await fetch("/api/quiz/answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chunk_id: current.chunk_id, text }),
+      });
+      const data = await res.json();
+      document.getElementById("delta").textContent =
+        `p ${data.p_before.toFixed(2)} → ${data.p_after.toFixed(2)}  (score ${data.score.toFixed(2)})`;
+      await loadBeliefs();
+    };
+
+    loadBeliefs();
+  </script>
+</body>
+</html>
