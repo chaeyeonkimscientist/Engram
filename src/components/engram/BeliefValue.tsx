@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { beliefVisual, formatDelta, formatP } from "@/lib/belief";
 import { duration } from "@/lib/tokens";
-import { MicroLabel } from "./MicroLabel";
+import { Cap } from "./Cap";
 
 /**
  * The counting P value. This is the demo-winning detail: the stored posterior
  * visibly moves on screen while the agent speaks, so judges see a state engine,
- * not a chatbot (PRD §6.7 risk 2). Tabular numerals, so the digits do not
- * jitter as they climb.
+ * not a tutor bot with a database attached (PRD §6.7 risk 2). Martian Mono is
+ * monospaced, so the digits are tabular and cannot jitter as they climb.
  */
 export function CountingP({
   value,
@@ -17,6 +17,7 @@ export function CountingP({
   size = "lg",
   animate = true,
   label = "P(encoded)",
+  onDark = false,
   className = "",
 }: {
   value: number;
@@ -24,21 +25,20 @@ export function CountingP({
   size?: "sm" | "md" | "lg";
   animate?: boolean;
   label?: string | null;
+  onDark?: boolean;
   className?: string;
 }) {
-  const [shown, setShown] = useState(animate ? value : value);
+  const [shown, setShown] = useState(value);
   const from = useRef(value);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
     if (!animate) {
       setShown(value);
+      from.current = value;
       return;
     }
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
+    if (window.matchMedia("(prefers-reduced-motion:reduce)").matches) {
       setShown(value);
       from.current = value;
       return;
@@ -49,8 +49,7 @@ export function CountingP({
     const delta = value - origin;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration.count);
-      // easeOutCubic — arrives, then settles.
-      const eased = 1 - Math.pow(1 - t, 3);
+      const eased = 1 - Math.pow(1 - t, 3); // arrives, then settles
       setShown(origin + delta * eased);
       if (t < 1) raf.current = requestAnimationFrame(tick);
       else from.current = value;
@@ -63,15 +62,23 @@ export function CountingP({
   }, [value, animate]);
 
   const v = beliefVisual(shown, confidence);
-  const fontSize =
-    size === "lg" ? "var(--text-numeric-lg)" : size === "md" ? "var(--text-numeric)" : "1.25rem";
+  const fontSize = size === "lg" ? "3.4rem" : size === "md" ? "2.1rem" : "1.2rem";
+  // On dark the ramp inverts; clay is still permitted for the at-risk tail.
+  const color = v.atRisk ? "var(--risk-lt)" : onDark ? "var(--bone)" : "var(--ink)";
 
   return (
     <div className={`flex flex-col items-start gap-1.5 ${className}`}>
-      {label && <MicroLabel tone="dim">{label}</MicroLabel>}
+      {label && <Cap>{label}</Cap>}
       <span
-        className="font-mono tnum leading-none"
-        style={{ fontSize, color: v.ink, textShadow: v.confidence < 0.4 ? "none" : undefined }}
+        className="tnum"
+        style={{
+          fontFamily: "var(--mono)",
+          fontWeight: 300,
+          fontSize,
+          lineHeight: 1,
+          letterSpacing: "-0.02em",
+          color,
+        }}
         aria-live="polite"
       >
         {formatP(shown)}
@@ -81,32 +88,89 @@ export function CountingP({
 }
 
 /**
- * A labelled contribution, e.g. "hedged +0.12" vs "fluent +0.31". The label is
- * the point: the number must always name the evidence that moved it.
+ * A labelled contribution: "hedged +0.12" vs "fluent +0.31". The label is the
+ * point — a number that moves without naming its evidence is just a number.
  */
 export function DeltaChip({
   delta,
   label,
+  onDark = false,
   className = "",
 }: {
   delta: number;
   label: string;
+  onDark?: boolean;
   className?: string;
 }) {
-  // A delta's colour is the direction it moves belief, resolved through the one
-  // mapping: upward deltas read cool, downward warm.
-  const v = beliefVisual(delta >= 0 ? 0.9 : 0.1);
+  const negative = delta < 0;
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full py-1 pr-2.5 pl-2 ${className}`}
-      style={{ border: `1px solid ${v.stroke}`, background: v.tint }}
+      className={`inline-flex items-center gap-2 ${className}`}
+      style={{
+        border: `1px solid ${onDark ? "var(--hair-lt)" : "var(--hair)"}`,
+        borderRadius: 100,
+        padding: ".34rem .7rem .34rem .6rem",
+        // Downward moves sit deeper on the ramp; the at-risk direction may use clay.
+        background: negative
+          ? onDark
+            ? "rgba(156,132,103,.16)"
+            : "rgba(156,132,103,.12)"
+          : onDark
+            ? "rgba(239,239,236,.06)"
+            : "var(--bone)",
+      }}
     >
-      <span className="micro" style={{ color: "var(--text-secondary)" }}>
+      <span
+        className="block h-[5px] w-[5px] rounded-full"
+        style={{ background: negative ? "var(--risk)" : onDark ? "var(--bone)" : "var(--deep)" }}
+      />
+      <span
+        style={{
+          fontSize: "var(--t--1)",
+          letterSpacing: "-0.01em",
+          color: onDark ? "var(--slate)" : "var(--moss)",
+        }}
+      >
         {label}
       </span>
-      <span className="font-mono tnum text-label" style={{ color: v.ink }}>
+      <span
+        className="tnum"
+        style={{
+          fontFamily: "var(--mono)",
+          fontWeight: 300,
+          fontSize: "var(--t--2)",
+          color: negative ? (onDark ? "var(--risk-lt)" : "var(--risk)") : onDark ? "var(--bone)" : "var(--ink)",
+        }}
+      >
         {formatDelta(delta)}
       </span>
+    </span>
+  );
+}
+
+/** Inline P readout for dense contexts (log rows, list items). */
+export function PReadout({
+  p,
+  confidence = 1,
+  onDark = false,
+}: {
+  p: number;
+  confidence?: number;
+  onDark?: boolean;
+}) {
+  const v = beliefVisual(p, confidence);
+  return (
+    <span
+      className="tnum"
+      style={{
+        fontFamily: "var(--mono)",
+        fontWeight: 300,
+        fontSize: "var(--t--2)",
+        letterSpacing: ".06em",
+        color: v.atRisk ? (onDark ? "var(--risk-lt)" : "var(--risk)") : onDark ? "var(--bone)" : "var(--ink)",
+      }}
+    >
+      {formatP(p)}
     </span>
   );
 }

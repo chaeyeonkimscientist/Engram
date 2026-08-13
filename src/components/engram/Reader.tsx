@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { beliefVisual } from "@/lib/belief";
-import { formatP } from "@/lib/belief";
+import { beliefVisual, formatP } from "@/lib/belief";
+import { Cap } from "./Cap";
 
 /**
- * The reading column. Centre, wide, quiet, nothing decorative. Line length is
- * capped by the `--measure-read` token rather than by a hard-coded width so the
- * measure stays a design decision, not an accident.
+ * The reading column. Centre, wide, quiet, nothing decorative. Bone, because
+ * long-form reading on near-black is fatiguing and the wash reads better here.
+ * Line-length is a token, not an accident.
  */
 export function ReadingColumn({
   children,
@@ -18,8 +18,14 @@ export function ReadingColumn({
 }) {
   return (
     <div
-      className={`mx-auto w-full font-serif text-read text-[color:var(--text-reading)] ${className}`}
-      style={{ maxWidth: "var(--measure-read)" }}
+      className={`mx-auto w-full ${className}`}
+      style={{
+        maxWidth: "var(--measure-read)",
+        fontSize: "var(--t-0)",
+        lineHeight: 1.72,
+        letterSpacing: "-0.005em",
+        color: "var(--deep)",
+      }}
     >
       {children}
     </div>
@@ -29,38 +35,33 @@ export function ReadingColumn({
 /**
  * The dwell rail: a hairline in the left margin that grows over the dwell gate.
  * A chunk is only scored once the viewport has held on it (PRD §5, use case A).
- * This is three seconds of a hairline growing — deliberately not a progress bar.
+ * Three seconds of a hairline growing — deliberately not a progress bar.
  */
 export function DwellRail({
-  /** 0–1 static fill, or omit and pass `running` to animate the full gate. */
   progress,
   running = false,
   state = "idle",
   className = "",
 }: {
+  /** 0–1 static fill. Ignored while `running`. */
   progress?: number;
+  /** Animate the full gate duration from the `--dur-dwell` token. */
   running?: boolean;
   state?: "idle" | "counting" | "fired";
   className?: string;
 }) {
   const fired = state === "fired";
-  const color = fired
-    ? "var(--color-cool-400)"
-    : "color-mix(in oklab, var(--color-ink-100) 62%, transparent)";
-
   return (
     <div
       className={`absolute top-0 left-0 h-full w-px overflow-hidden ${className}`}
-      style={{ zIndex: "var(--z-rail)" }}
+      style={{ zIndex: "var(--z-rail)", background: "var(--hair)" }}
       aria-hidden="true"
     >
-      <div className="absolute inset-0" style={{ background: "var(--surface-hairline)" }} />
       <div
         data-dwell-fill
         className="absolute inset-0 origin-top"
         style={{
-          background: color,
-          boxShadow: fired ? "0 0 8px 0 var(--color-cool-500)" : undefined,
+          background: fired ? "var(--deep)" : "var(--moss)",
           transform: `scaleY(${fired ? 1 : (progress ?? 0)})`,
           transition: running ? undefined : "transform var(--dur-quick) linear",
           animation: running ? "var(--animate-dwell)" : undefined,
@@ -72,8 +73,9 @@ export function DwellRail({
 
 /**
  * A chunk of the document. Its wash comes from `beliefVisual()` — the only
- * source of belief colour in the system. The wash is atmosphere: at peak it is
- * under 9% alpha, so body text keeps its contrast.
+ * source of belief treatment in the system. Encoded chunks get nothing at all:
+ * clean bone. Under-encoded ones sit deeper on the ramp; the at-risk tail is
+ * the single place clay is permitted.
  */
 export function Passage({
   children,
@@ -87,7 +89,6 @@ export function Passage({
   className = "",
 }: {
   children: ReactNode;
-  /** P(encoded) for this chunk. */
   p: number;
   confidence?: number;
   /** The chunk currently held in the viewport. */
@@ -103,21 +104,22 @@ export function Passage({
   return (
     <div
       className={`relative ${className}`}
-      style={{ paddingLeft: "var(--space-rail-gutter)" }}
+      style={{ paddingLeft: "1.15rem", paddingBlock: "0.15rem" }}
       data-band={v.band}
     >
-      {current && (
-        <DwellRail progress={dwell} running={dwellRunning} state={dwellState} />
-      )}
+      {current && <DwellRail progress={dwell} running={dwellRunning} state={dwellState} />}
 
-      {/* The wash. Inset slightly so it reads as light on the page, not a block. */}
+      {/* The wash. Inset so it reads as depth on the page, not a block. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-[-0.35rem] right-[-1rem] left-[0.35rem] rounded-sm"
+        className="pointer-events-none absolute"
         style={{
+          inset: "-0.3rem -0.9rem",
+          left: "0.3rem",
+          borderRadius: 10,
           background: v.tint,
           zIndex: "var(--z-tint)",
-          transition: "background var(--dur-tint) var(--ease-instrument)",
+          transition: "background var(--dur-tint) var(--ease-panel)",
         }}
       />
 
@@ -126,14 +128,10 @@ export function Passage({
       </p>
 
       {showValue && (
-        <div className="relative flex items-center gap-2 pb-1" style={{ zIndex: 2 }}>
-          <span
-            className="micro tnum"
-            style={{ color: v.ink, letterSpacing: "0.14em" }}
-          >
-            P {formatP(v.p)}
-          </span>
-          <span className="micro text-ink-600">{v.label}</span>
+        <div className="relative flex items-center gap-2.5 pb-1.5" style={{ zIndex: 2 }}>
+          <Cap style={{ color: v.ink, letterSpacing: "0.14em" }}>P {formatP(v.p)}</Cap>
+          <Cap>{v.label}</Cap>
+          {v.confidence < 0.55 && <Cap>low confidence</Cap>}
         </div>
       )}
     </div>

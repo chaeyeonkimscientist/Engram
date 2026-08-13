@@ -1,18 +1,22 @@
 "use client";
 
 import { useRef, useState, type PointerEvent, type ReactNode } from "react";
-import { MicroLabel } from "./MicroLabel";
+import { Cap } from "./Cap";
 
 export type OrbState = "idle" | "thinking" | "wants-to-speak" | "speaking";
 
 /**
- * Escalation ladder. The orb is PRD §6.5's interrupt-safety rules made visual:
- * it never interrupts, it *offers*, and the offer decays if you keep reading.
+ * The escalation ladder. The orb is PRD §6.5's interrupt-safety rules made
+ * visual: it never interrupts, it *offers*, and the offer decays if you keep
+ * reading.
  *
- *  idle           40% opacity, still           — watching, no ask
- *  thinking       60% opacity, slow pulse      — dwell gate fired, belief updated
- *  wants-to-speak 100% opacity, bloom outward  — question queued at a paragraph boundary
- *  speaking       expands to a pill            — waveform + transcript
+ *   idle            40% opacity, still         — watching, no ask
+ *   thinking        60% opacity, slow pulse    — dwell gate fired, belief updated
+ *   wants-to-speak  100%, bloom outward        — question queued at a paragraph boundary
+ *   speaking        expands into a pill        — waveform + transcript
+ *
+ * No hue anywhere: the ladder is carried by opacity, scale and bloom, on the
+ * ramp. Emphasis comes from depth and contrast, as the identity requires.
  */
 const STATE_META: Record<OrbState, { opacity: number; label: string }> = {
   idle: { opacity: 0.4, label: "watching" },
@@ -30,7 +34,6 @@ export function AgentOrb({
   onInvite,
   /** Swipe right to defer the offer. */
   onDefer,
-  /** Show the decay hairline under a queued offer. */
   showDecay = true,
   className = "",
 }: {
@@ -50,12 +53,10 @@ export function AgentOrb({
     startX.current = e.clientX;
     e.currentTarget.setPointerCapture(e.pointerId);
   };
-
   const handleMove = (e: PointerEvent<HTMLButtonElement>) => {
     if (startX.current === null) return;
     setDragX(Math.max(0, e.clientX - startX.current));
   };
-
   const handleUp = () => {
     if (dragX > SWIPE_DEFER_PX) onDefer?.();
     startX.current = null;
@@ -76,24 +77,27 @@ export function AgentOrb({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={handleUp}
-        aria-label={`Agent: ${meta.label}. Tap to invite, swipe to defer.`}
-        className="relative grid touch-none place-items-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-cool-400"
+        aria-label={`Agent: ${meta.label}. Tap to invite, swipe right to defer.`}
+        className="relative grid touch-none cursor-pointer place-items-center rounded-full border-0 bg-transparent outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--deep)]"
         style={{
           width: size,
           height: size,
           transform: `translateX(${dragX}px)`,
           opacity: deferring ? 0.25 : 1,
-          transition: dragX === 0 ? "transform var(--dur-calm) var(--ease-instrument), opacity var(--dur-quick) linear" : "opacity var(--dur-quick) linear",
+          transition:
+            dragX === 0
+              ? "transform var(--dur-calm) var(--ease-panel), opacity var(--dur-quick) linear"
+              : "opacity var(--dur-quick) linear",
         }}
       >
-        {/* Bloom rings — the offer reaching out, never grabbing. */}
+        {/* Bloom — the offer reaching out, never grabbing. */}
         {wants && (
           <>
             <span
               data-orb-bloom
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
-                border: "1px solid color-mix(in oklab, var(--color-ink-50) 40%, transparent)",
+                border: "1px solid rgba(42,58,61,.45)",
                 animation: "var(--animate-orb-bloom)",
               }}
             />
@@ -101,25 +105,21 @@ export function AgentOrb({
               data-orb-bloom
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
-                border: "1px solid color-mix(in oklab, var(--color-ink-50) 24%, transparent)",
+                border: "1px solid rgba(42,58,61,.28)",
                 animation: "var(--animate-orb-bloom)",
-                animationDelay: "900ms",
+                animationDelay: "950ms",
+              }}
+            />
+            <span
+              className="pointer-events-none absolute rounded-full"
+              style={{
+                inset: -size * 0.5,
+                background:
+                  "radial-gradient(circle, rgba(42,58,61,.16) 0%, transparent 68%)",
+                animation: "var(--animate-orb-halo)",
               }}
             />
           </>
-        )}
-
-        {/* Volumetric halo — light in fog. */}
-        {wants && (
-          <span
-            className="pointer-events-none absolute rounded-full"
-            style={{
-              inset: -size * 0.5,
-              background:
-                "radial-gradient(circle, color-mix(in oklab, var(--color-ink-50) 22%, transparent) 0%, transparent 68%)",
-              animation: "var(--animate-orb-halo)",
-            }}
-          />
         )}
 
         {/* Core */}
@@ -128,31 +128,28 @@ export function AgentOrb({
           data-state={state}
           className="relative rounded-full"
           style={{
-            width: size * 0.62,
-            height: size * 0.62,
+            width: size * 0.6,
+            height: size * 0.6,
             background:
-              "radial-gradient(circle at 34% 30%, var(--color-ink-50) 0%, var(--color-ink-200) 46%, var(--color-ink-400) 100%)",
+              "radial-gradient(circle at 34% 30%, var(--deep) 0%, var(--void) 70%)",
             opacity: meta.opacity,
-            boxShadow: wants ? "0 0 18px -2px color-mix(in oklab, var(--color-ink-50) 55%, transparent)" : undefined,
+            boxShadow: wants ? "0 6px 18px -6px rgba(11,17,19,.6)" : undefined,
             animation: state === "thinking" ? "var(--animate-orb-think)" : undefined,
-            transition: "opacity var(--dur-slow) var(--ease-instrument), box-shadow var(--dur-slow) var(--ease-instrument)",
+            transition: "opacity var(--dur-slow) var(--ease-panel)",
           }}
         />
       </button>
 
-      {/* Offer decay: a real token, rendered. If you keep reading, the ask expires. */}
+      {/* Offer decay, rendered. If you keep reading, the ask expires. */}
       {wants && showDecay && (
         <span
           aria-hidden="true"
-          className="mt-2 block h-px origin-left overflow-hidden"
-          style={{ width: size }}
+          className="mt-2 block h-px overflow-hidden"
+          style={{ width: size, background: "var(--hair)" }}
         >
           <span
             className="block h-px w-full origin-left"
-            style={{
-              background: "color-mix(in oklab, var(--color-ink-50) 45%, transparent)",
-              animation: "var(--animate-offer-decay)",
-            }}
+            style={{ background: "var(--moss)", animation: "var(--animate-offer-decay)" }}
           />
         </span>
       )}
@@ -164,17 +161,16 @@ export function AgentOrb({
 export function Waveform({
   bars = 22,
   active = true,
+  color = "var(--deep)",
   className = "",
 }: {
   bars?: number;
   active?: boolean;
+  color?: string;
   className?: string;
 }) {
   return (
-    <span
-      aria-hidden="true"
-      className={`flex h-4 items-center gap-[3px] ${className}`}
-    >
+    <span aria-hidden="true" className={`flex h-4 items-center gap-[3px] ${className}`}>
       {Array.from({ length: bars }).map((_, i) => (
         <span
           key={i}
@@ -182,7 +178,7 @@ export function Waveform({
           className="block w-[2px] rounded-full"
           style={{
             height: "100%",
-            background: "color-mix(in oklab, var(--color-ink-100) 78%, transparent)",
+            background: color,
             transform: active ? undefined : "scaleY(0.16)",
             animation: active ? "var(--animate-wave)" : undefined,
             animationDelay: `${(i % 7) * 110 + (i % 3) * 60}ms`,
@@ -194,9 +190,10 @@ export function Waveform({
 }
 
 /**
- * The speaking state: the orb expanded into an outlined pill, in the idiom of
- * the pill lockups on the reference boards. Transcript sits underneath, so the
- * spoken turn is always visible alongside the belief that triggered it.
+ * The speaking state: the orb expanded into an outlined glass pill, with the
+ * transcript underneath. Every spoken turn cites the stored posterior that
+ * triggered it — that citation is the "state engine that talks" defense, and it
+ * is not optional (PRD §6.7 risk 2).
  */
 export function SpeakingPill({
   transcript,
@@ -205,37 +202,37 @@ export function SpeakingPill({
   className = "",
 }: {
   transcript: ReactNode;
-  /** The stored posterior this intervention cites (PRD §6.7 risk 2). */
   cites?: string;
   onDismiss?: () => void;
   className?: string;
 }) {
   return (
-    <div className={`flex flex-col items-end gap-2 ${className}`} style={{ zIndex: "var(--z-orb)" }}>
+    <div
+      className={`flex flex-col items-end gap-2 ${className}`}
+      style={{ zIndex: "var(--z-orb)" }}
+    >
       <div
-        className="flex items-center gap-3 rounded-full py-2.5 pr-3.5 pl-3"
+        className="flex items-center gap-3 rounded-full py-2.5 pr-3 pl-3.5"
         style={{
-          border: "1px solid var(--surface-line)",
-          background: "color-mix(in oklab, var(--color-ink-850) 92%, transparent)",
-          boxShadow: "var(--elev-card), var(--glow-neutral)",
-          backdropFilter: "blur(8px)",
+          border: "1px solid var(--hair)",
+          background: "rgba(239,239,236,.72)",
+          backdropFilter: "blur(16px) saturate(1.4)",
+          boxShadow: "var(--elev-nav)",
         }}
       >
         <span
-          className="block h-2.5 w-2.5 rounded-full"
-          style={{
-            background: "var(--color-ink-50)",
-            boxShadow: "0 0 12px 0 color-mix(in oklab, var(--color-ink-50) 70%, transparent)",
-          }}
+          className="block h-2 w-2 rounded-full"
+          style={{ background: "var(--void)" }}
         />
         <Waveform />
-        <MicroLabel tone="dim">speaking</MicroLabel>
+        <Cap>speaking</Cap>
         {onDismiss && (
           <button
             type="button"
             onClick={onDismiss}
-            className="micro text-ink-500 transition-colors hover:text-ink-200"
             aria-label="Dismiss"
+            className="cursor-pointer border-0 bg-transparent"
+            style={{ color: "var(--moss)", fontSize: "var(--t--1)" }}
           >
             ×
           </button>
@@ -243,16 +240,20 @@ export function SpeakingPill({
       </div>
 
       <div
-        className="max-w-[22rem] rounded-md px-3 py-2.5 text-right"
+        className="max-w-[23rem] px-3.5 py-3 text-right"
         style={{
-          border: "1px solid var(--surface-line)",
-          background: "color-mix(in oklab, var(--color-ink-900) 88%, transparent)",
+          border: "1px solid var(--hair)",
+          borderRadius: "var(--r)",
+          background: "rgba(255,255,255,.55)",
+          backdropFilter: "blur(18px)",
         }}
       >
-        <p className="text-meta leading-relaxed text-ink-200">{transcript}</p>
+        <p style={{ fontSize: "var(--t--1)", lineHeight: 1.55, color: "var(--deep)" }}>
+          {transcript}
+        </p>
         {cites && (
           <p className="mt-2">
-            <MicroLabel tone="dim">cites {cites}</MicroLabel>
+            <Cap>cites {cites}</Cap>
           </p>
         )}
       </div>
