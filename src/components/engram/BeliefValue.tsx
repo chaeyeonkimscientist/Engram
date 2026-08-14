@@ -34,13 +34,15 @@ export function CountingP({
 
   useEffect(() => {
     if (!animate) {
-      setShown(value);
       from.current = value;
       return;
     }
+    // Reduced motion: arrive at the value on the next frame, without counting.
     if (window.matchMedia("(prefers-reduced-motion:reduce)").matches) {
-      setShown(value);
-      from.current = value;
+      raf.current = requestAnimationFrame(() => {
+        setShown(value);
+        from.current = value;
+      });
       return;
     }
 
@@ -61,7 +63,8 @@ export function CountingP({
     };
   }, [value, animate]);
 
-  const v = beliefVisual(shown, confidence);
+  const display = animate ? shown : value;
+  const v = beliefVisual(display, confidence);
   const fontSize = size === "lg" ? "3.4rem" : size === "md" ? "2.1rem" : "1.2rem";
   // On dark the ramp inverts; clay is still permitted for the at-risk tail.
   const color = v.atRisk ? "var(--risk-lt)" : onDark ? "var(--bone)" : "var(--ink)";
@@ -81,7 +84,7 @@ export function CountingP({
         }}
         aria-live="polite"
       >
-        {formatP(shown)}
+        {formatP(display)}
       </span>
     </div>
   );

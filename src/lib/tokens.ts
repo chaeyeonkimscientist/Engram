@@ -103,3 +103,10 @@ export const elevation = {
 
 /** The reader dims to ~30% behind the quiz overlay. */
 export const scrim = { readerOpacity: 0.3 } as const;
+
+/**
+ * The goo channel: feGaussianBlur stdDeviation at each end of the confidence
+ * range. `soft` is what a zero-evidence chunk gets once `CONFIDENCE_FLOOR`
+ * (lib/belief.ts) is applied — unresolved but still legible.
+ */
+export const goo = { soft: 5.2, crisp: 2.0 } as const;

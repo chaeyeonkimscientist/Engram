@@ -88,7 +88,6 @@ export function MarkStage({ autoAdvance = true }: { autoAdvance?: boolean }) {
       goTo(i);
     }, 1500);
     return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoAdvance]);
 
   useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);

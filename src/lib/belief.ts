@@ -30,7 +30,10 @@ export type BeliefBand = "at-risk" | "weak" | "forming" | "holding" | "encoded";
 
 export interface BeliefVisual {
   p: number;
+  /** Confidence as reported, clamped to [0,1]. Use this for readouts. */
   confidence: number;
+  /** Confidence after the floor is applied. Drives the goo. */
+  visualConfidence: number;
   band: BeliefBand;
   /** Lowercase readout copy, e.g. "under-encoded". */
   label: string;
@@ -59,6 +62,18 @@ const round = (n: number): number => Math.round(n * 1000) / 1000;
 
 /** Below this, a chunk is at risk and may spend the accent budget. */
 export const RISK_THRESHOLD = 0.4;
+
+/**
+ * Floor on the confidence that reaches the goo.
+ *
+ * The backend derives confidence from accumulated evidence mass, so a freshly
+ * ingested chunk arrives at exactly 0. Mapping that straight through would blur
+ * every chunk of a new document into a smear, which on stage reads as "the
+ * design is broken" rather than "the system is honest about uncertainty". The
+ * floor keeps the zero-evidence state soft but legible, and leaves the crisp end
+ * of the range to mean something.
+ */
+export const CONFIDENCE_FLOOR = 0.28;
 
 /** Ramp channels, as RGB triples for alpha compositing. */
 const SLATE = [138, 154, 155] as const;
@@ -92,7 +107,8 @@ const BAND_LABEL: Record<BeliefBand, string> = {
  */
 export function beliefVisual(p: number, confidence = 1): BeliefVisual {
   const belief = clamp01(p);
-  const conf = clamp01(confidence);
+  const reported = clamp01(confidence);
+  const conf = Math.max(CONFIDENCE_FLOOR, reported);
   const atRisk = belief < RISK_THRESHOLD;
 
   // Confidence softens every treatment toward "not yet claimed".
@@ -109,7 +125,8 @@ export function beliefVisual(p: number, confidence = 1): BeliefVisual {
 
   return {
     p: belief,
-    confidence: conf,
+    confidence: reported,
+    visualConfidence: conf,
     band: beliefBand(belief),
     label: BAND_LABEL[beliefBand(belief)],
     density: densityName(belief),

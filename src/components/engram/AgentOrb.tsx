@@ -35,6 +35,7 @@ export function AgentOrb({
   /** Swipe right to defer the offer. */
   onDefer,
   showDecay = true,
+  onDark = false,
   className = "",
 }: {
   state?: OrbState;
@@ -42,12 +43,19 @@ export function AgentOrb({
   onInvite?: () => void;
   onDefer?: () => void;
   showDecay?: boolean;
+  /** Invert the orb for void-dark surfaces. Still no hue — only the ramp. */
+  onDark?: boolean;
   className?: string;
 }) {
   const [dragX, setDragX] = useState(0);
   const startX = useRef<number | null>(null);
   const meta = STATE_META[state];
   const wants = state === "wants-to-speak";
+  // On void the ladder inverts: the orb is bone, the bloom is bone.
+  const edge = onDark ? "239,239,236" : "42,58,61";
+  const core = onDark
+    ? "radial-gradient(circle at 34% 30%, var(--bone) 0%, var(--slate) 78%)"
+    : "radial-gradient(circle at 34% 30%, var(--deep) 0%, var(--void) 70%)";
 
   const handleDown = (e: PointerEvent<HTMLButtonElement>) => {
     startX.current = e.clientX;
@@ -97,7 +105,7 @@ export function AgentOrb({
               data-orb-bloom
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
-                border: "1px solid rgba(42,58,61,.45)",
+                border: `1px solid rgba(${edge},.45)`,
                 animation: "var(--animate-orb-bloom)",
               }}
             />
@@ -105,7 +113,7 @@ export function AgentOrb({
               data-orb-bloom
               className="pointer-events-none absolute inset-0 rounded-full"
               style={{
-                border: "1px solid rgba(42,58,61,.28)",
+                border: `1px solid rgba(${edge},.28)`,
                 animation: "var(--animate-orb-bloom)",
                 animationDelay: "950ms",
               }}
@@ -115,7 +123,7 @@ export function AgentOrb({
               style={{
                 inset: -size * 0.5,
                 background:
-                  "radial-gradient(circle, rgba(42,58,61,.16) 0%, transparent 68%)",
+                  `radial-gradient(circle, rgba(${edge},.16) 0%, transparent 68%)`,
                 animation: "var(--animate-orb-halo)",
               }}
             />
@@ -130,8 +138,7 @@ export function AgentOrb({
           style={{
             width: size * 0.6,
             height: size * 0.6,
-            background:
-              "radial-gradient(circle at 34% 30%, var(--deep) 0%, var(--void) 70%)",
+            background: core,
             opacity: meta.opacity,
             boxShadow: wants ? "0 6px 18px -6px rgba(11,17,19,.6)" : undefined,
             animation: state === "thinking" ? "var(--animate-orb-think)" : undefined,
@@ -145,11 +152,11 @@ export function AgentOrb({
         <span
           aria-hidden="true"
           className="mt-2 block h-px overflow-hidden"
-          style={{ width: size, background: "var(--hair)" }}
+          style={{ width: size, background: onDark ? "var(--hair-lt)" : "var(--hair)" }}
         >
           <span
             className="block h-px w-full origin-left"
-            style={{ background: "var(--moss)", animation: "var(--animate-offer-decay)" }}
+            style={{ background: onDark ? "var(--bone)" : "var(--moss)", animation: "var(--animate-offer-decay)" }}
           />
         </span>
       )}

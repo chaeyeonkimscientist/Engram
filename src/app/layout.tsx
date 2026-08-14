@@ -1,30 +1,25 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Inter_Tight, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
-/** UI sans — chrome, labels, cards. */
-const ui = Geist({
-  variable: "--font-ui",
+/** Anything a person reads. Set very tight. */
+const interTight = Inter_Tight({
+  variable: "--font-inter-tight",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-/** Micro-labels and every numeric on screen. Monospace ⇒ tabular by construction. */
-const micro = Geist_Mono({
-  variable: "--font-micro",
+/** Anything the machine reports. Only ever small and tracked out. */
+const martianMono = Martian_Mono({
+  variable: "--font-martian-mono",
   subsets: ["latin"],
-});
-
-/** The reading face. Only the reading column uses this. */
-const reading = Newsreader({
-  variable: "--font-reading",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
+  weight: ["300", "400"],
 });
 
 export const metadata: Metadata = {
-  title: "Engram — design system",
+  title: "Engram — Identity & Design System",
   description:
-    "Reading companion that models the reader's memory. An instrument, not a chatbot.",
+    "A reading companion that models the reader's memory. Density is the belief.",
 };
 
 export default function RootLayout({
@@ -32,9 +27,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${ui.variable} ${micro.variable} ${reading.variable} antialiased`}>
-        {children}
-      </body>
+      <body className={`${interTight.variable} ${martianMono.variable}`}>{children}</body>
     </html>
   );
 }
